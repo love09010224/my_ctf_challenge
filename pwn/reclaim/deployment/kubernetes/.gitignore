@@ -1,0 +1,10 @@
+build/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+.env
+values-production.yaml
+*.pem
+*.key

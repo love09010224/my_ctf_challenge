@@ -1,0 +1,92 @@
+gateway:
+  # The chart deliberately rejects more than one gateway replica.
+  replicaCount: 1
+  image:
+    repository: registry.internal.example/reclaim-gateway
+    digest: sha256:REPLACE_WITH_GATEWAY_IMAGE_DIGEST
+    tag: ""
+  maxConnections: 256
+  queueWaitSeconds: 3600
+  queuedInputLimit: 65536
+
+ctfd:
+  baseUrl: https://ctf.example.org
+  challengeId: "REPLACE_WITH_NUMERIC_CHALLENGE_ID"
+  requireTeam: true
+
+tls:
+  mode: direct
+  existingSecret: reclaim-gateway-tls
+
+secrets:
+  existingSecret: reclaim-gateway-secrets
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    digest: sha256:REPLACE_WITH_REDIS_IMAGE_DIGEST
+    tag: ""
+  existingSecret: reclaim-q2-redis-auth
+
+service:
+  type: LoadBalancer
+  port: 31337
+  # Keep a staging/operator CIDR until the deliberate public-release change.
+  loadBalancerSourceRanges:
+    - 203.0.113.10/32
+
+challenge:
+  namespace: reclaim-instances
+  image:
+    repository: registry.internal.example/reclaim-box-000
+    digest: sha256:REPLACE_WITH_PRIVATE_IMAGE_DIGEST
+    tag: ""
+  imagePullSecrets:
+    - registry-credentials
+  timeoutSeconds: 900
+  finishedJobTtlSeconds: 60
+  backendStartupSeconds: 90
+  # Fixed event contract; the chart rejects every other value.
+  maxInstances: 30
+  unsafeAllowNonContractResources: false
+  resources:
+    requests:
+      cpu: 250m
+      memory: 640Mi
+    limits:
+      cpu: "2"
+      memory: 640Mi
+  nodeSelector:
+    kubernetes.io/arch: amd64
+    workload: untrusted-qemu
+  tolerations:
+    - key: workload
+      operator: Equal
+      value: untrusted-qemu
+      effect: NoSchedule
+
+networkPolicy:
+  enabled: true
+  # Replace both documentation addresses with exact /32 endpoints. The
+  # single-node deploy wrapper derives them automatically.
+  kubernetesApiCidrs:
+    - 10.43.0.1/32
+  kubernetesApiPort: 443
+  kubernetesApiEndpointCidrs:
+    - 192.0.2.2/32
+  kubernetesApiEndpointPort: 6443
+  ctfdCidrs:
+    - 192.0.2.1/32
+  ctfdPort: 443
+
+quota:
+  enabled: true
+  hard:
+    pods: "30"
+    count/jobs.batch: "30"
+    count/services: "30"
+    requests.cpu: 7500m
+    requests.memory: 19200Mi
+    limits.cpu: "60"
+    limits.memory: 19200Mi

@@ -1,0 +1,215 @@
+{{- include "reclaim.validate" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "reclaim.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "reclaim.selectorLabels" . | nindent 6 }}
+      reclaim.hspace.io/workload: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "reclaim.selectorLabels" . | nindent 8 }}
+        reclaim.hspace.io/workload: gateway
+    spec:
+      serviceAccountName: {{ include "reclaim.fullname" . }}
+      automountServiceAccountToken: true
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.gateway.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "reclaim.image" (list .Values.gateway.image) | quote }}
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - name: gateway
+              containerPort: 31337
+              protocol: TCP
+            - name: health
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+            - name: CTFD_BASE_URL
+              value: {{ .Values.ctfd.baseUrl | quote }}
+            {{- if .Values.ctfd.challengeId }}
+            - name: CTFD_CHALLENGE_ID
+              value: {{ .Values.ctfd.challengeId | quote }}
+            {{- end }}
+            - name: CTFD_REQUIRE_TEAM
+              value: {{ .Values.ctfd.requireTeam | quote }}
+            - name: CTFD_TIMEOUT_SECONDS
+              value: {{ .Values.ctfd.timeoutSeconds | quote }}
+            - name: CTFD_ALLOW_HTTP
+              value: {{ .Values.ctfd.allowHttp | quote }}
+            {{- if .Values.ctfd.caSecret }}
+            - name: CTFD_CA_FILE
+              value: /var/run/secrets/reclaim-ctfd-ca/ca.crt
+            {{- end }}
+            - name: INSTANCE_NAMESPACE
+              value: {{ .Values.challenge.namespace | quote }}
+            - name: CHALLENGE_IMAGE
+              value: {{ include "reclaim.image" (list .Values.challenge.image) | quote }}
+            - name: INSTANCE_NAME_SECRET_FILE
+              value: /var/run/secrets/reclaim-gateway/instance-name-hmac
+            - name: REDIS_URL
+              value: {{ printf "redis://%s-redis:6379/0" (include "reclaim.fullname" .) | quote }}
+            - name: REDIS_PASSWORD_FILE
+              value: /var/run/secrets/reclaim-redis/password
+            - name: REDIS_PREFIX
+              value: q2:reclaim
+            - name: INSTANCE_TIMEOUT_SECONDS
+              value: {{ .Values.challenge.timeoutSeconds | quote }}
+            - name: FINISHED_JOB_TTL_SECONDS
+              value: {{ .Values.challenge.finishedJobTtlSeconds | quote }}
+            - name: MAX_INSTANCES
+              value: {{ .Values.challenge.maxInstances | quote }}
+            - name: BACKEND_STARTUP_SECONDS
+              value: {{ .Values.challenge.backendStartupSeconds | quote }}
+            - name: INSTANCE_IMAGE_PULL_POLICY
+              value: {{ .Values.challenge.image.pullPolicy | quote }}
+            - name: INSTANCE_IMAGE_PULL_SECRETS
+              value: {{ join "," .Values.challenge.imagePullSecrets | quote }}
+            - name: INSTANCE_NODE_SELECTOR_JSON
+              value: {{ toJson .Values.challenge.nodeSelector | quote }}
+            - name: INSTANCE_TOLERATIONS_JSON
+              value: {{ toJson .Values.challenge.tolerations | quote }}
+            - name: INSTANCE_RUNTIME_CLASS
+              value: {{ .Values.challenge.runtimeClassName | quote }}
+            - name: INSTANCE_PRIORITY_CLASS
+              value: {{ .Values.challenge.priorityClassName | quote }}
+            - name: INSTANCE_CPU_REQUEST
+              value: {{ .Values.challenge.resources.requests.cpu | quote }}
+            - name: INSTANCE_CPU_LIMIT
+              value: {{ .Values.challenge.resources.limits.cpu | quote }}
+            - name: INSTANCE_MEMORY
+              value: {{ .Values.challenge.resources.limits.memory | quote }}
+            - name: TLS_MODE
+              value: {{ .Values.tls.mode | quote }}
+            {{- if eq .Values.tls.mode "direct" }}
+            - name: TLS_CERT_FILE
+              value: /var/run/secrets/reclaim-tls/tls.crt
+            - name: TLS_KEY_FILE
+              value: /var/run/secrets/reclaim-tls/tls.key
+            {{- end }}
+            - name: MAX_CONNECTIONS
+              value: {{ .Values.gateway.maxConnections | quote }}
+            - name: QUEUE_POLL_SECONDS
+              value: {{ .Values.gateway.queuePollSeconds | quote }}
+            - name: QUEUE_STATUS_SECONDS
+              value: {{ .Values.gateway.queueStatusSeconds | quote }}
+            - name: QUEUE_WAIT_SECONDS
+              value: {{ .Values.gateway.queueWaitSeconds | quote }}
+            - name: QUEUED_INPUT_LIMIT
+              value: {{ .Values.gateway.queuedInputLimit | quote }}
+            - name: AUTH_ATTEMPTS_PER_MINUTE
+              value: {{ .Values.gateway.authAttemptsPerMinute | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.gateway.logLevel | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          volumeMounts:
+            - name: gateway-secret
+              mountPath: /var/run/secrets/reclaim-gateway
+              readOnly: true
+            - name: redis-secret
+              mountPath: /var/run/secrets/reclaim-redis
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            {{- if eq .Values.tls.mode "direct" }}
+            - name: tls
+              mountPath: /var/run/secrets/reclaim-tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.ctfd.caSecret }}
+            - name: ctfd-ca
+              mountPath: /var/run/secrets/reclaim-ctfd-ca
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: gateway-secret
+          secret:
+            secretName: {{ .Values.secrets.existingSecret }}
+            items:
+              - key: {{ .Values.secrets.instanceNameHmacKey }}
+                path: instance-name-hmac
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Mi
+        - name: redis-secret
+          secret:
+            secretName: {{ .Values.redis.existingSecret }}
+            items:
+              - key: {{ .Values.redis.passwordKey }}
+                path: password
+        {{- if eq .Values.tls.mode "direct" }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.tls.existingSecret }}
+            items:
+              - key: {{ .Values.tls.certKey }}
+                path: tls.crt
+              - key: {{ .Values.tls.privateKeyKey }}
+                path: tls.key
+        {{- end }}
+        {{- if .Values.ctfd.caSecret }}
+        - name: ctfd-ca
+          secret:
+            secretName: {{ .Values.ctfd.caSecret }}
+            items:
+              - key: {{ .Values.ctfd.caKey }}
+                path: ca.crt
+        {{- end }}
+      {{- with .Values.gateway.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

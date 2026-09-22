@@ -1,0 +1,10 @@
+RE:CLAIM gateway was installed in namespace {{ .Release.Namespace }}.
+
+External service:
+  kubectl -n {{ .Release.Namespace }} get service {{ include "reclaim.fullname" . }}
+
+Participant connection after DNS is configured:
+  ncat --ssl <gateway-domain> {{ .Values.service.port }}
+
+The participant enters a CTFd Access Token at the Token: prompt. The token is
+validated by the broker and is not forwarded to the QEMU guest.

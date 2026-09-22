@@ -1,0 +1,127 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "reclaim.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "reclaim.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "reclaim.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+        reclaim.hspace.io/workload: state
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: {{ include "reclaim.image" (list .Values.redis.image) | quote }}
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              password="$(cat /var/run/secrets/reclaim-redis/password)"
+              printf '%s' "$password" | grep -Eq '^[0-9a-f]{64}$'
+              umask 077
+              {
+                printf 'bind 0.0.0.0\n'
+                printf 'protected-mode yes\n'
+                printf 'port 6379\n'
+                printf 'save ""\n'
+                printf 'appendonly no\n'
+                printf 'maxmemory 64mb\n'
+                printf 'maxmemory-policy noeviction\n'
+                printf 'requirepass %s\n' "$password"
+              } > /tmp/redis.conf
+              exec redis-server /tmp/redis.conf
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - REDISCLI_AUTH="$(cat /var/run/secrets/reclaim-redis/password)" exec redis-cli -h 127.0.0.1 ping | grep -qx PONG
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - REDISCLI_AUTH="$(cat /var/run/secrets/reclaim-redis/password)" exec redis-cli -h 127.0.0.1 ping | grep -qx PONG
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: redis-secret
+              mountPath: /var/run/secrets/reclaim-redis
+              readOnly: true
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: {{ .Values.redis.storageLimit }}
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Mi
+        - name: redis-secret
+          secret:
+            secretName: {{ .Values.redis.existingSecret }}
+            items:
+              - key: {{ .Values.redis.passwordKey }}
+                path: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "reclaim.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "reclaim.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+      protocol: TCP
+{{- end }}

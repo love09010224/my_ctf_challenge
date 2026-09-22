@@ -1,0 +1,7 @@
+apiVersion: v2
+name: reclaim-gateway
+description: CTFd-token-authenticated FIFO Kubernetes QEMU instancer for RE:CLAIM
+type: application
+version: 0.2.0
+appVersion: "2.0.0"
+kubeVersion: ">=1.23.0-0"

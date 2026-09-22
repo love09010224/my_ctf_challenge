@@ -1,0 +1,12 @@
+{{- if .Values.quota.enabled }}
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ include "reclaim.fullname" . }}
+  namespace: {{ .Values.challenge.namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+spec:
+  hard:
+    {{- toYaml .Values.quota.hard | nindent 4 }}
+{{- end }}

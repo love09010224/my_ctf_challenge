@@ -1,0 +1,22 @@
+name: reclaim-box-000-admin-smoke
+
+services:
+  challenge:
+    build: ./service
+    image: reclaim-box-000-service:admin-smoke
+    restart: "no"
+    environment:
+      VM_TIMEOUT_SECONDS: "${VM_TIMEOUT_SECONDS:-900}"
+    ports:
+      - "${SERVICE_BIND_ADDRESS:-127.0.0.1}:${SERVICE_PORT:-31337}:31337"
+    user: "65534:65534"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=4m,mode=1777
+    mem_limit: 640m
+    cpus: 2.0
+    pids_limit: 128
+    stop_grace_period: 5s

@@ -1,0 +1,60 @@
+# RE:CLAIM release configuration fragment for Linux 6.12.x / x86_64.
+# Merge this over x86_64_defconfig, then inspect the resulting .config.
+CONFIG_64BIT=y
+CONFIG_X86_64=y
+CONFIG_EXPERT=y
+CONFIG_MODULES=y
+# CONFIG_MODULE_UNLOAD is not set
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_BINFMT_ELF=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_TMPFS=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+
+CONFIG_RANDOMIZE_BASE=y
+CONFIG_MITIGATION_PAGE_TABLE_ISOLATION=y
+# SMEP and SMAP are selected at runtime from the x86 CPU feature bits.  The
+# QEMU launcher exposes both features explicitly.
+CONFIG_STRICT_KERNEL_RWX=y
+CONFIG_STRICT_MODULE_RWX=y
+CONFIG_HARDENED_USERCOPY=y
+CONFIG_FORTIFY_SOURCE=y
+CONFIG_SLAB_FREELIST_HARDENED=y
+CONFIG_SLAB_FREELIST_RANDOM=y
+# CONFIG_RANDOM_KMALLOC_CACHES is not set
+
+CONFIG_MEMCG=y
+CONFIG_SECURITY=y
+CONFIG_SECURITY_DMESG_RESTRICT=y
+CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
+# CONFIG_USER_NS is not set
+# CONFIG_IO_URING is not set
+
+# Keep arbitrary-kernel-memory endgames inside the kernel.  In particular,
+# neither modprobe_path nor a pipe-style core_pattern may become a shorter
+# usermode-helper route after the intended physical carrier is built.
+CONFIG_STATIC_USERMODEHELPER=y
+CONFIG_STATIC_USERMODEHELPER_PATH=""
+
+# The player receives only bzImage, never the private vmlinux/System.map.
+# Disable the in-kernel compressed name/address database as well: hiding
+# /proc/kallsyms addresses with kptr_restrict does not prevent offline
+# reconstruction of CONFIG_KALLSYMS_ALL from the distributed image.
+# KPROBES selects KALLSYMS, and the challenge does not use runtime probes.
+# CONFIG_KPROBES is not set
+# CONFIG_KALLSYMS is not set
+
+# CONFIG_KASAN is not set
+# CONFIG_KCSAN is not set
+# CONFIG_KFENCE is not set
+
+# RE:CLAIM final key-backed Route 1 requirements.
+CONFIG_KEYS=y
+CONFIG_BIG_KEYS=y
+CONFIG_ASYMMETRIC_KEY_TYPE=y
+# CONFIG_BPF_SYSCALL is not set
+# CONFIG_IKCONFIG is not set
+CONFIG_DEBUG_INFO_NONE=y

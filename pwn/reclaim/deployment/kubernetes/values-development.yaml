@@ -1,0 +1,25 @@
+ctfd:
+  baseUrl: http://host.docker.internal:18000
+  allowHttp: true
+  challengeId: "1"
+
+tls:
+  mode: plaintext
+  existingSecret: ""
+  unsafeAllowPlaintext: true
+
+service:
+  type: NodePort
+  nodePort: 31337
+
+challenge:
+  image:
+    repository: reclaim-v4
+    tag: remote
+    pullPolicy: IfNotPresent
+
+gateway:
+  image:
+    repository: reclaim-gateway
+    tag: local
+    pullPolicy: IfNotPresent

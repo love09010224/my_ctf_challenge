@@ -1,0 +1,33 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "reclaim.fullname" . }}
+  namespace: {{ .Values.challenge.namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "create", "delete"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "reclaim.fullname" . }}
+  namespace: {{ .Values.challenge.namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "reclaim.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "reclaim.fullname" . }}

@@ -1,0 +1,141 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "reclaim.fullname" . }}-gateway-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "reclaim.selectorLabels" . | nindent 6 }}
+      reclaim.hspace.io/workload: gateway
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - ports:
+        - port: 31337
+          protocol: TCP
+        - port: 8080
+          protocol: TCP
+  egress:
+    # Name resolution is restricted to the cluster DNS Pods rather than every
+    # destination on UDP/TCP 53.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.dnsNamespace | quote }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 14 }}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "reclaim.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: redis
+      ports:
+        - port: 6379
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.challenge.namespace | quote }}
+          podSelector:
+            matchLabels:
+              reclaim.hspace.io/managed: "true"
+              reclaim.hspace.io/workload: instance
+      ports:
+        - port: 31337
+          protocol: TCP
+    - to:
+        {{- range .Values.networkPolicy.kubernetesApiCidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.networkPolicy.kubernetesApiPort }}
+          protocol: TCP
+    # kube-router sees local API traffic after ClusterIP DNAT and therefore
+    # matches the ready EndpointSlice address and target port here.
+    - to:
+        {{- range .Values.networkPolicy.kubernetesApiEndpointCidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.networkPolicy.kubernetesApiEndpointPort }}
+          protocol: TCP
+    {{- if .Values.networkPolicy.ctfdCidrs }}
+    - to:
+        {{- range .Values.networkPolicy.ctfdCidrs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - port: {{ .Values.networkPolicy.ctfdPort }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.ctfdPodSelector }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+      ports:
+        - port: {{ $.Values.networkPolicy.ctfdPort }}
+          protocol: TCP
+    {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "reclaim.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "reclaim.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "reclaim.selectorLabels" . | nindent 14 }}
+              reclaim.hspace.io/workload: gateway
+      ports:
+        - port: 6379
+          protocol: TCP
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "reclaim.fullname" . }}-instances
+  namespace: {{ .Values.challenge.namespace }}
+  labels:
+    {{- include "reclaim.labels" . | nindent 4 }}
+spec:
+  # This namespace is dedicated to challenge workloads. Select every Pod so a
+  # compromised controller cannot evade isolation by omitting a label.
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "reclaim.selectorLabels" . | nindent 14 }}
+      ports:
+        - port: 31337
+          protocol: TCP
+  egress: []
+{{- end }}

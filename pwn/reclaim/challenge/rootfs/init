@@ -1,0 +1,44 @@
+#!/bin/busybox sh
+
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+export HOME=/root
+umask 077
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mkdir -p /dev/pts /tmp /run /home/ctf
+mount -t devpts none /dev/pts
+chmod 1777 /tmp
+hostname reclaim
+
+if ! insmod /reclaim.ko; then
+	echo 'evidence service unavailable'
+	poweroff -f
+fi
+chmod 0666 /dev/reclaim /dev/reclaim-ledger /dev/reclaim-codec
+chmod 0400 /dev/reclaim-evidence
+echo 8192 > /proc/sys/kernel/keys/maxkeys
+echo 4194304 > /proc/sys/kernel/keys/maxbytes
+echo 2 > /proc/sys/kernel/kptr_restrict 2>/dev/null || true
+echo 1 > /proc/sys/kernel/dmesg_restrict 2>/dev/null || true
+echo 2 > /proc/sys/kernel/perf_event_paranoid 2>/dev/null || true
+
+clear
+cat /etc/motd
+echo
+echo 'Login: ctf (uid 1000)'
+echo
+chown 1000:1000 /home/ctf
+export HOME=/home/ctf
+
+# BusyBox ash asks interactive terminals for their cursor position after every
+# prompt.  With a transparent TCP serial transport and ncat, the participant's
+# local tty echoes that automatic reply as "^[[<row>;<col>R".  The standalone
+# service marks only that transport; keep normal guest echo for the player's
+# direct -nographic run.sh path.
+case " $(cat /proc/cmdline) " in
+	*" reclaim.console_noecho=1 "*) stty -echo ;;
+esac
+setsid cttyhack su -s /bin/sh ctf
+poweroff -f

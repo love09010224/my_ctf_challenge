@@ -1,0 +1,144 @@
+gateway:
+  replicaCount: 1
+  image:
+    repository: registry.example.invalid/reclaim-gateway
+    tag: "1.0.0"
+    digest: ""
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  logLevel: INFO
+  maxConnections: 256
+  # Per source IP. Keep this high enough for participants behind a shared NAT.
+  authAttemptsPerMinute: 300
+  queuePollSeconds: 1
+  queueStatusSeconds: 5
+  queueWaitSeconds: 3600
+  queuedInputLimit: 65536
+
+ctfd:
+  # The gateway appends /api/v1/users/me to this value. A path prefix is allowed.
+  baseUrl: https://ctfd.example.invalid
+  # Optional but recommended: require the participant token to see this challenge.
+  challengeId: ""
+  requireTeam: true
+  timeoutSeconds: 5
+  allowHttp: false
+  caSecret: ""
+  caKey: ca.crt
+
+tls:
+  # direct: the broker terminates TLS; upstream: an external TLS gateway terminates it;
+  # plaintext: development only and requires unsafeAllowPlaintext=true.
+  mode: direct
+  existingSecret: reclaim-gateway-tls
+  certKey: tls.crt
+  privateKeyKey: tls.key
+  unsafeAllowPlaintext: false
+
+secrets:
+  # Must contain a random key named instance-name-hmac. The chart never creates it.
+  existingSecret: reclaim-gateway-secrets
+  instanceNameHmacKey: instance-name-hmac
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.4.2-alpine"
+    digest: "sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952"
+    pullPolicy: IfNotPresent
+  # This Secret is created out of band and must contain passwordKey.
+  existingSecret: reclaim-q2-redis-auth
+  passwordKey: password
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 96Mi
+  storageLimit: 16Mi
+
+service:
+  type: LoadBalancer
+  port: 31337
+  annotations: {}
+  externalTrafficPolicy: Cluster
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: []
+  nodePort: null
+
+challenge:
+  # Keep untrusted QEMU Jobs separate from the public gateway and its TLS/HMAC secrets.
+  namespace: reclaim-instances
+  image:
+    # This private image contains the real flag-bearing rootfs. Never use a public registry.
+    repository: registry.example.invalid/reclaim-box-000
+    tag: "v4"
+    digest: ""
+    pullPolicy: IfNotPresent
+  imagePullSecrets: []
+  timeoutSeconds: 900
+  finishedJobTtlSeconds: 60
+  # Fixed event contract: thirty active QEMU Jobs; the thirty-first waits in FIFO.
+  maxInstances: 30
+  # Test-only escape hatch used by the lightweight kind mock; production keeps this false.
+  unsafeAllowNonContractResources: false
+  # Covers scheduling/image startup and boot until the first guest serial byte.
+  backendStartupSeconds: 90
+  resources:
+    requests:
+      cpu: 250m
+      memory: 640Mi
+    limits:
+      cpu: "2"
+      memory: 640Mi
+  nodeSelector: {}
+  tolerations: []
+  runtimeClassName: ""
+  priorityClassName: ""
+
+networkPolicy:
+  enabled: true
+  # Standard NetworkPolicy has no FQDN peer. The production wrapper resolves
+  # the current CTFd A records and the in-cluster Kubernetes Service IP into
+  # exact /32 entries immediately before rendering the release.
+  dnsNamespace: kube-system
+  dnsPodSelector:
+    k8s-app: kube-dns
+  kubernetesApiCidrs:
+    - 10.43.0.1/32
+  kubernetesApiPort: 443
+  # kube-router evaluates host-bound traffic after Service DNAT, so retain the
+  # exact ready EndpointSlice address/port as a separate rule too.
+  kubernetesApiEndpointCidrs:
+    - 192.0.2.2/32
+  kubernetesApiEndpointPort: 6443
+  # Documentation-only TEST-NET address; deploy.sh replaces this value.
+  ctfdCidrs:
+    - 192.0.2.1/32
+  ctfdPort: 443
+  # Used only by the isolated kind E2E CTFd fixture.
+  ctfdPodSelector: {}
+
+quota:
+  # Namespace-wide; enable only when this namespace is dedicated to the challenge.
+  enabled: true
+  hard:
+    pods: "30"
+    count/jobs.batch: "30"
+    count/services: "30"
+    requests.cpu: 7500m
+    requests.memory: 19200Mi
+    limits.cpu: "60"
+    limits.memory: 19200Mi
