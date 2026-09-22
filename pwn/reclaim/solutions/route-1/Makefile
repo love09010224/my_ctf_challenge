@@ -9,7 +9,7 @@ all: exploit
 exploit: exploit.c reclaim_v4_uapi.h kernel_offsets.h
 	$(CC) $(CFLAGS) exploit.c -o $@ $(LDFLAGS)
 verify-official:
-	@test -f exploit.official || { echo 'download reclaim-route-a-exploit from the GitHub Release as exploit.official' >&2; exit 1; }
+	@test -f exploit.official || { echo 'download reclaim-route-1-exploit from the GitHub Release as exploit.official' >&2; exit 1; }
 	printf '%s  %s\n' '$(OFFICIAL_SHA256)' exploit.official | sha256sum -c -
 clean:
 	rm -f exploit

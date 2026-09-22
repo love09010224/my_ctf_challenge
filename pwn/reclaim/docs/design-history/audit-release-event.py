@@ -62,8 +62,8 @@ STALE_DOCUMENTATION_PATTERNS = {
         r"(?i)(?:\b8\s*(?:VMs?|s" r"lots?)\b|8\s*슬롯|전역\s*용량[^\n]{0,24}\b8\b)"
     ),
     "legacy logical-CPU host requirement": re.compile(r"(?i)\b8" r"0\s*vCPU\b"),
-    "legacy five-run Route E result": re.compile(r"(?i)cold\s+boot\s+5" r"/5"),
-    "legacy Route E timing range": re.compile(r"68\s*(?:~|～|-)\s*1" r"00\s*초"),
+    "legacy five-run Route 2 result": re.compile(r"(?i)cold\s+boot\s+5" r"/5"),
+    "legacy Route 2 timing range": re.compile(r"68\s*(?:~|～|-)\s*1" r"00\s*초"),
 }
 
 REQUIRED_DOCUMENTATION_SNIPPETS = {
@@ -76,7 +76,7 @@ REQUIRED_DOCUMENTATION_SNIPPETS = {
     ),
     ACCEPTANCE: (
         "t2d-standard-60",
-        "Route E cold 30-way batch 3",
+        "Route 2 cold 30-way batch 3",
         "30/30",
         "TCP/31337 방화벽 개방",
     ),
