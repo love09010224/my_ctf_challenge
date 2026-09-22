@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}이벤트 없음 · MEOWPASS Console{% endblock %}
+
+{% block content %}
+  <section class="panel empty-state">
+    <span>404</span>
+    <h1>이벤트를 찾을 수 없습니다.</h1>
+    <a class="primary-link" href="{{ url_for('events') }}">목록으로 돌아가기</a>
+  </section>
+{% endblock %}

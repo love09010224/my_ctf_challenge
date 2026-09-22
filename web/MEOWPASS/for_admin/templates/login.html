@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}로그인 · MEOWPASS Console{% endblock %}
+
+{% block content %}
+  <section class="login-layout">
+    <div class="login-art" aria-hidden="true">
+      <div class="signal signal-one"></div>
+      <div class="signal signal-two"></div>
+      <div class="feeder">
+        <div class="feeder-screen">04:04</div>
+        <div class="feeder-slot"></div>
+        <div class="bowl"></div>
+      </div>
+      <div class="paw">●</div>
+      <div class="paw paw-two">●</div>
+      <p>Smart feeding.<br>Safer access.</p>
+    </div>
+
+    <div class="login-card">
+      <p class="section-label">STAFF CONSOLE</p>
+      <h1>관리 서비스 로그인</h1>
+      <p class="lead">등록 태그 및 급식기 이벤트를 확인합니다.</p>
+
+      <form method="post" autocomplete="off">
+        <label for="username">계정</label>
+        <input id="username" name="username" type="text" maxlength="160" required autofocus>
+
+        <label for="password">암호</label>
+        <input id="password" name="password" type="password" maxlength="160" required>
+
+        <button class="primary" type="submit">로그인</button>
+      </form>
+
+      <div class="service-note">
+        <span class="status-dot"></span>
+        <span>MEOWPASS Legacy Console 1.4</span>
+      </div>
+    </div>
+  </section>
+{% endblock %}

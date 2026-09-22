@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}이벤트 #{{ event.id }} · MEOWPASS Console{% endblock %}
+
+{% block content %}
+  <a class="back-link" href="{{ url_for('events') }}">← 이벤트 목록</a>
+
+  <div class="page-heading detail-heading">
+    <div>
+      <p class="section-label">EVENT #{{ event.id }}</p>
+      <h1>{{ event.device }}</h1>
+      <p>{{ event.occurred_at }}</p>
+    </div>
+    <span class="pill warning">확인 필요</span>
+  </div>
+
+  <div class="detail-grid">
+    <section class="panel">
+      <div class="panel-title"><h2>급식기 이벤트</h2></div>
+      <dl class="data-list">
+        <div><dt>이벤트 번호</dt><dd>#{{ event.id }}</dd></div>
+        <div><dt>목걸이 태그</dt><dd><code>{{ event.tag_id }}</code></dd></div>
+        <div><dt>제공 메뉴</dt><dd>{{ event.menu }}</dd></div>
+        <div><dt>처리 결과</dt><dd class="ok">{{ event.result }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel identity-panel">
+      <div class="panel-title"><h2>연결된 반려동물</h2></div>
+
+      {% if is_admin %}
+        <div class="pet-profile">
+          {% if event.pet_image %}
+            <img
+              class="pet-photo"
+              src="{{ url_for('static', filename=event.pet_image) }}"
+              alt="{{ event.pet_name }} 사진"
+              width="3024"
+              height="3024"
+            >
+          {% else %}
+            <div class="pet-avatar">{{ event.pet_name[0] }}</div>
+          {% endif %}
+          <div><small>등록 이름</small><h3>{{ event.pet_name }}</h3><p>{{ event.pet_type }}</p></div>
+        </div>
+        <dl class="data-list compact">
+          <div><dt>보호자 계정</dt><dd>{{ event.guardian }}</dd></div>
+          <div><dt>확인 결과</dt><dd>{{ event.cause }}</dd></div>
+        </dl>
+      {% else %}
+        <div class="locked-box">
+          <div class="lock-icon">•••</div>
+          <h3>소유자 정보 비공개</h3>
+          <p>태그에 연결된 반려동물과 보호자 정보는 운영자만 확인할 수 있습니다.</p>
+          <code>OWNER: ************</code>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if is_admin and event.verification_code %}
+    <section class="verification">
+      <div>
+        <p class="section-label">INCIDENT VERIFICATION</p>
+        <h2>사건 확인 코드</h2>
+        <p>태그 연결 오류 접수 시 아래 코드를 함께 제출하십시오.</p>
+      </div>
+      <code>{{ event.verification_code }}</code>
+    </section>
+  {% endif %}
+{% endblock %}

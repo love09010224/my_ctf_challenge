@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}급식 이벤트 · MEOWPASS Console{% endblock %}
+
+{% block content %}
+  <div class="page-heading">
+    <div>
+      <p class="section-label">EVENT MONITOR</p>
+      <h1>최근 급식 이벤트</h1>
+      <p>연결된 급식기의 태그 인식 결과입니다.</p>
+    </div>
+    <div class="live-badge"><span></span> LIVE</div>
+  </div>
+
+  {% if session.get('role') != 'admin' %}
+    <aside class="permission-note">
+      체험 계정은 기본 이벤트만 확인할 수 있습니다. 태그 소유자 정보는 운영 권한이 필요합니다.
+    </aside>
+  {% endif %}
+
+  <section class="stats">
+    <article><span>오늘 이벤트</span><strong>3</strong></article>
+    <article><span>정상 태그</span><strong>2</strong></article>
+    <article class="warn"><span>확인 필요</span><strong>1</strong></article>
+  </section>
+
+  <section class="panel event-panel">
+    <div class="panel-title">
+      <h2>이벤트 목록</h2>
+      <span>2026.09.18 기준</span>
+    </div>
+
+    <div class="event-list">
+      {% for event in events %}
+        <a class="event-row{% if event.id == 404 %} attention{% endif %}" href="{{ url_for('event_detail', event_id=event.id) }}">
+          <span class="event-symbol">{% if event.id == 404 %}!{% else %}✓{% endif %}</span>
+          <span class="event-main">
+            <strong>{{ event.device }}</strong>
+            <small>{{ event.occurred_at }}</small>
+          </span>
+          <span class="event-tag">
+            <small>COLLAR TAG</small>
+            <code>{{ event.tag_id }}</code>
+          </span>
+          <span class="event-state">{% if event.id == 404 %}확인 필요{% else %}정상{% endif %}</span>
+          <span class="chevron">›</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

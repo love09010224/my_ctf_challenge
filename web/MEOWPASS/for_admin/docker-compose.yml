@@ -1,0 +1,22 @@
+name: meowpass
+
+x-uos-ctf:
+  category: web
+
+services:
+  meowpass:
+    build: .
+    ports:
+      - "40584:8000"
+    environment:
+      FLAG: "${FLAG:-SHA{wh0_ate_the_tuna_at_0404}}"
+      SECRET_KEY: "${SECRET_KEY:-}"
+      DATABASE_PATH: /tmp/meowpass.db
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
