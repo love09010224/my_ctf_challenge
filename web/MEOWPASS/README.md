@@ -27,11 +27,6 @@ for_admin/
 
 저장소 경로는 `web/MEOWPASS/`다.
 
-`for_user/app.py`는 취약점과 화면 동작이 운영 소스와 같고 기본 플래그만
-`SHA{local_dummy_flag}`로 치환되어 있다. 참가자에게 첨부하는 파일은 이
-`app.py` 하나뿐이며, 의존성·템플릿·정적 파일은 제공하지 않는다. 실제 플래그,
-풀이, 테스트, 화면 리소스와 운영 설정은 계속 `for_admin/`에만 둔다.
-
 ## 로컬 실행
 
 ```bash
@@ -45,6 +40,3 @@ python3 solution/solve.py http://127.0.0.1:40584
 ```bash
 docker compose down
 ```
-
-외부 포트 `40584`는 저장소의 다른 대표 Compose 포트와 겹치지 않으며,
-루트 배포 문서와 업로드 기록에도 반영되어 있다.

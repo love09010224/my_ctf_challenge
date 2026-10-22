@@ -7,7 +7,7 @@
 
 
 > `service/rootfs.cpio.gz`에는 실제 대회 flag가 있습니다. 행사 중에는 운영자
-> 전용이었지만 현재는 대회 종료 후 공개 자료입니다. 계정 credential은 포함하지 않습니다.
+> 전용이었지만 현재는 대회 종료 후 공개 자료입니다.
 
 ## Production quick start
 
